@@ -1,0 +1,60 @@
+
+#================================ BASIC PACKAGES INSTALLATION =================================
+
+initial_update() {
+
+    echo ""
+    echo "############ INITIAL UPDATE ############"
+    echo ""
+
+    if [ ! -f "${LOG_FOLDER}/ubp_initial-update.lock" ]; then
+
+        log_entry "Initial system update - details in ${LOG_FOLDER}/ubp-$HOSTNAME_$RUNTIME_TIMESTAMP.initial-update.log"
+
+        apt -y update | tee -a $LOG_INITIAL_UPDATE_FILE &&
+        apt -y upgrade | tee -a $LOG_INITIAL_UPDATE_FILE &&
+        apt -y dist-upgrade | tee -a $LOG_INITIAL_UPDATE_FILE &&
+        apt -y autoclean | tee -a $LOG_INITIAL_UPDATE_FILE &&
+        apt -y autoremove | tee -a $LOG_INITIAL_UPDATE_FILE &&
+
+        touch ${LOG_FOLDER}/ubp_initial-update.lock
+    
+    else
+        log_entry_error "Initial system update was allready done, skipping this step"
+    fi
+}
+
+basic_packages_installation() {
+
+    echo ""
+    echo "############ BASIC PACKAGES ############"
+    echo ""
+
+    if [ ! -f "${LOG_FOLDER}/ubp_basic-packages.lock" ]; then
+
+        apt-install_wrapper git | tee -a $LOG_BASIC_PACKAGES_FILE
+        apt-install_wrapper curl | tee -a $LOG_BASIC_PACKAGES_FILE
+        apt-install_wrapper clamav | tee -a $LOG_BASIC_PACKAGES_FILE
+        apt-install_wrapper net-tools | tee -a $LOG_BASIC_PACKAGES_FILE
+        apt-install_wrapper sysstat | tee -a $LOG_BASIC_PACKAGES_FILE
+        apt-install_wrapper iotop | tee -a $LOG_BASIC_PACKAGES_FILE
+        apt-install_wrapper zip unzip | tee -a $LOG_BASIC_PACKAGES_FILE
+        apt-install_wrapper htop | tee -a $LOG_BASIC_PACKAGES_FILE
+        apt-install_wrapper vim | tee -a $LOG_BASIC_PACKAGES_FILE
+        apt-install_wrapper make | tee -a $LOG_BASIC_PACKAGES_FILE
+        apt-install_wrapper tmux | tee -a $LOG_BASIC_PACKAGES_FILE
+        apt-install_wrapper nfs-common | tee -a $LOG_BASIC_PACKAGES_FILE
+        apt-install_wrapper restic | tee -a $LOG_BASIC_PACKAGES_FILE
+
+        touch ${LOG_FOLDER}/ubp_basic-packages.lock
+
+    else
+        log_entry_error "Initial system update was allready done, skipping this step"
+    fi
+}
+
+essentials_wrapper() {
+
+    initial_update
+    basic_packages_installation
+}

@@ -1,0 +1,28 @@
+
+#========================== FLOW =========================
+
+if [ ! -f "${LOG_FOLDER}/docker-server_install.lock" ]; then
+
+    if [ ! -d "$LOG_FOLDER" ]; then
+
+        mkdir $LOG_FOLDER
+    fi
+
+    touch "${LOG_FOLDER}/docker-server_install.lock"
+
+    create_admin_user-wrapper
+    essentials_wrapper
+    hardening_wrapper
+    physical-server_wrapper
+    file_server_wrapper
+    docker_server_wrapper
+    luks_wrapper
+    raid1_wrapper
+
+    rm "${LOG_FOLDER}/docker-server_install.lock"
+
+else
+
+    echo_message_error "Script was blocked by ${LOG_FOLDER}/docker-server_install.lock file!!!"
+    exit 1
+fi

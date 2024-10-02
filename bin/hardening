@@ -1,0 +1,85 @@
+
+change_default_ssh_port() {
+
+    local ssh_port_nr=$1
+
+    echo ""
+    echo "############ CHANGING DEFAULT PORT ############"
+    echo ""
+
+    log_entry "CHANGING DEFAULT PORT OF SSH..."
+
+    if [ -f "${LOG_FOLDER}/ubp_custom-ssh.lock" ]; then
+
+        log_entry_warning "Looks like default ssh port had been already changed!!!"
+    else
+
+        log_entry "Backup of default sshd settings: /etc/ssh/sshd_config to /etc/ssh/sshd_config.bkp"
+        sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bkp
+        sudo sed -i "s/#Port\ 22/Port\ $ssh_port_nr/g" /etc/ssh/sshd_config
+        log_entry "Restarting sshd due to changes in /etc/ssh/sshd_config"
+        touch ${LOG_FOLDER}/ubp_custom-ssh.lock
+        sudo systemctl restart sshd
+    fi
+}
+
+restrict_ssh() {
+
+    echo ""
+    echo "############ RESTRICT SSH ############"
+    echo ""
+
+    log_entry "RESTRICTING ACCESS ONLY TO ADMIN USER..."
+
+    if [ -f "${LOG_FOLDER}/ubp_allow-users.lock" ]; then
+
+        log_entry_warning "Looks like access had been already restricted!!!"
+    else
+
+        log_entry "Backup of default sshd settings: /etc/ssh/sshd_config to /etc/ssh/sshd_config.bkp2"
+        sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bkp2
+        log_entry "Adding admin user to allowed in /etc/ssh/sshd_config"
+        sudo sed -i "s/PermitRootLogin\ yes/PermitRootLogin\ no/g" /etc/ssh/sshd_config
+        echo "AllowUsers $ADMIN_USER" >> /etc/ssh/sshd_config
+        log_entry "Restarting sshd due to changes in /etc/ssh/sshd_config"
+        sudo systemctl restart sshd
+    fi
+}
+
+ssh_port_loop() {
+
+    while true; do
+        read -p 'Please, provide new port for SSH connections (default is 22): ' SSH_PORT
+        read -p 'Is that value correct? [y/n/q] - q to skipp this step:' sshportloopyesnoq
+        case $sshportloopyesnoq in
+            [Yy]* ) 
+                echo "Default SSH port will be changed to: $SSH_PORT"
+                change_default_ssh_port $SSH_PORT
+                restrict_ssh
+                touch ${LOG_FOLDER}/ubp_allow-users.lock
+                break
+            ;;
+            [Nn]* ) 
+                echo "Please provide SSH port again..."
+            ;;
+            [Qq]* ) 
+                echo "Skipp default SSH port change"
+                break
+            ;;
+            * ) echo "Answer either yes, no or q to skipp!";;
+        esac
+    done
+}
+
+hardening_wrapper() {
+
+    if [ "$skipp_hardening_flag" = false ]; then
+
+        if [ ! -f "${LOG_FOLDER}/ubp_custom-ssh.lock" ]; then
+            ssh_port_loop
+        fi
+    else
+
+        log_entry_warning "skipp_hardening_flag was set to true in the previous step, skipping this step"
+    fi
+}

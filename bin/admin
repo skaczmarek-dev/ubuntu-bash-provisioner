@@ -1,0 +1,75 @@
+
+create_admin_user() {
+
+    if [[ "$(id $ADMIN_USER)" != *"no such user"* ]]; then
+
+        adduser --home /home/$ADMIN_USER --shell /bin/bash $ADMIN_USER
+        # passwd $ADMIN_USER # commented, because ubuntu asks for password during creation
+        usermod -aG sudo $ADMIN_USER
+
+        # VERIFICATION IF USER ethadmion was creeated successfully
+
+        if [ "$(id $ADMIN_USER | grep "no such user")" = "" ]; then
+            log_entry "User $ADMIN_USER was created successfully"
+        else
+            log_entry_error "User $ADMIN_USER was not created!!! Verify manually."
+            exit 1
+        fi
+
+        if [ -d "/home/$ADMIN_USER" ]; then
+            log_entry "Home folder /home/$ADMIN_USER was created successfully"
+        else
+            log_entry_error "Home folder /home/$ADMIN_USER was not created!!! Verify manually."
+            exit 1
+        fi
+
+        touch ${LOG_FOLDER}/admin-user.lock
+        echo "$ADMIN_USER" > ${LOG_FOLDER}/admin-user
+        restrict_ssh_flag=true
+    else
+        log_entry_warning "Admin user was already created, skipping creation step"
+        # TODO - add if to check whether the file from below exists
+        ADMIN_USER=$(cat ${LOG_FOLDER}/admin-user)
+    fi
+}
+
+user_creation_loop() {
+
+    while true; do
+
+        read -p 'Please, provide username for admin account (if admin user already exists, please provide username anyway): ' ADMIN_USER
+        echo "you chose: $ADMIN_USER"
+        read -p 'Is that username correct? [y/n/q] - q to skipp this step and to skipp hardening step:' yesnoq
+        case $yesnoq in
+            [Yy]* ) 
+                echo "Admin user: $username will be created"
+                create_admin_user
+                break
+            ;;
+            [Nn]* ) 
+                echo "Please provide username again..."
+            ;;
+            [Qq]* ) 
+                echo "Skipping admin user creation step..."
+                skipp_hardening_flag=true # informs hardening module, that user decides not to harden server
+                break
+            ;;
+            * ) echo "Answer either yes, no or q to skipp!";;
+        esac
+    done
+}
+
+create_admin_user-wrapper() {
+
+    echo ""
+    echo "############ CREATE ADMIN USER ############"
+    echo ""
+
+    if [ ! -f "${LOG_FOLDER}/admin-user.lock" ]; then
+
+        user_creation_loop
+    else
+    
+        log_entry_warning "Admin user was already created, skipping this step"
+    fi
+}

@@ -1,0 +1,42 @@
+
+install_file_server() {
+
+    apt-install_wrapper nfs-kernel-server
+}
+
+file-server_question-loop() {
+
+    while true; do
+
+        read -p 'Would you like to install NFS [y/n]?' yesno_file_server_loop
+        case $yesno_file_server_loop in
+            [Yy]* )
+                install_file_server
+                touch ${log_folder}/file-server_install.lock
+                break
+            ;;
+            [Nn]* ) 
+                echo "Skipping NFS server installation"
+                touch ${log_folder}/file-server_install.lock
+                break
+            ;;
+                * ) echo "Answer either yes or no to skipp!";;
+        esac
+    done
+}
+
+file_server_wrapper() {
+
+    echo ""
+    echo "######## NFS SERVER SETUP ########"
+    echo ""
+
+    if [ -f "${log_folder}/file-server_install.lock" ]; then
+
+        log_entry_warning "Looks like file server had been already installed!!!"
+
+    else
+
+        file-server_question-loop
+    fi
+}

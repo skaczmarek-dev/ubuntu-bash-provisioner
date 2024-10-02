@@ -1,0 +1,19 @@
+#!/bin/bash
+
+#========================================== SETTINGS ==========================================
+
+HOSTNAME=$(hostname)
+RUNTIME_TIMESTAMP="$(date +"%Y-%m-%d_%H-%M-%S")"
+LOG_FOLDER="/var/log/ubp"
+LOG_MAIN_FILE="${LOG_FOLDER}/ubp-$HOSTNAME_$RUNTIME_TIMESTAMP.main.log"
+LOG_WARNINGS_FILE="${LOG_FOLDER}/ubp-$HOSTNAME_$RUNTIME_TIMESTAMP.errors.log"
+LOG_INITIAL_UPDATE_FILE="${LOG_FOLDER}/ubp-$HOSTNAME_$RUNTIME_TIMESTAMP.initial-update.log"
+LOG_BASIC_PACKAGES_FILE="${LOG_FOLDER}/ubp-$HOSTNAME_$RUNTIME_TIMESTAMP.basic-packages.log"
+ADMIN_USER=""
+SSH_PORT=""
+DISTRO=$(cat /etc/os-release | grep "DISTRIB_ID" | awk -F"=" '{print $2}')
+
+#========================================== CONTROLS ==========================================
+
+restrict_ssh_flag=false
+skipp_hardening_flag=false

@@ -1,0 +1,26 @@
+
+install_ovpn_server() {
+
+    log_entry "INSTALLING OVPN SERVER..."
+
+    if [ ! -d "/dev/net" ]; then
+
+        log_entry "creating a tun file..."
+        mkdir /dev/net
+        mknod /dev/net/tun c 10 200
+        chmod 0666 /dev/net/tun
+    fi
+
+    if [ ! -f "openvpn-install.sh" ]; then
+
+        wget https://raw.githubusercontent.com/angristan/openvpn-install/master/openvpn-install.sh
+        chmod +x openvpn-install.sh
+    fi
+
+    if [ -f "openvpn-install.sh" ]; then
+
+        AUTO_INSTALL=y ./openvpn-install.sh | tee -a $LOG_MAIN_FILE
+
+        touch /var/tmp/ubp_ovpn
+    fi
+}
