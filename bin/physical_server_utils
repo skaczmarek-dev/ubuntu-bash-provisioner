@@ -1,0 +1,51 @@
+
+lm-sensors_install() {
+
+    if [ -f "${LOG_FOLDER}/ubp_lm-sensors_install.lock" ]; then
+
+        log_entry_warning "Looks like lm-sensors had been already restricted!!!"
+    else
+
+        apt-install_wrapper lm-sensors
+        apt-install_wrapper hddtemp
+        sudo sensors-detect --auto
+
+        touch ${LOG_FOLDER}/ubp_lm-sensors_install.lock
+    fi
+}
+
+physical-server_question-loop() {
+
+    while true; do
+
+        read -p 'Is this a physical server [y]? If the server is not physical, please choose [n]' yesno_physical_server_loop
+        case $yesno_physical_server_loop in
+            [Yy]* )
+                lm-sensors_install
+                touch ${LOG_FOLDER}/physical_server_utils.lock
+                break
+            ;;
+            [Nn]* ) 
+                echo "Skipping physical server utils installation"
+                touch ${LOG_FOLDER}/physical_server_utils.lock
+                break
+            ;;
+                * ) echo "Answer either yes or no to skipp!";;
+        esac
+    done
+}
+
+physical-server_wrapper() {
+
+    echo ""
+    echo "######## PHYSICAL SERVER SETUP ########"
+    echo ""
+
+    if [ -f "${LOG_FOLDER}/physical_server_utils.lock" ]; then
+
+        log_entry_warning "Looks like physical server utils had been already installed, skipping!!!"
+    else
+
+        physical-server_question-loop
+    fi
+}

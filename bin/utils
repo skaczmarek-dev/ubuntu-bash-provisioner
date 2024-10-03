@@ -1,0 +1,101 @@
+
+#=========================================== UTILS ============================================
+
+# LOGGING
+
+get_timestamp(){
+
+    date +"%Y/%m/%d %T"
+}
+
+echo_message() {
+
+    echo -e ${GREEN}$@${NC}
+}
+
+echo_message_warning() {
+
+    echo -e ${YELLOW}$@${NC}
+}
+
+echo_message_error() {
+
+    echo -e ${RED}$@${NC}
+}
+
+log_entry() {
+
+    echo_message "$@"
+    echo "$(get_timestamp) - $@" >> $LOG_MAIN_FILE
+}
+
+log_entry_warning() {
+
+    echo_message_warning "$@"
+    echo "$(get_timestamp) - [WARNING] - $@" | tee -a $LOG_MAIN_FILE $LOG_WARNINGS_FILE
+}
+
+log_entry_error() {
+
+    echo_message_error "$@"
+    echo "$(get_timestamp) - [ERROR] - $@" | tee -a $LOG_MAIN_FILE $LOG_WARNINGS_FILE
+}
+
+# SYSTEM INTEGRATION
+
+check_internet_connectivity() {
+
+    # TODO - currently looking for internet connection (I don't have local repo, so it is taken from internet), but in the future this should be combined with local repository connection check
+    if [ "$(ping -c 1 8.8.8.8 | grep '100% packet loss' )" = "" ]; then
+        echo true
+    else
+        echo false
+    fi
+}
+
+# PACKAGE CONTROL
+
+package_existence_control() {
+
+    # This function is made to return value: true or false depending on the existence on the system of
+    # package that we want to check. Use this function to determinate weather install package or not.
+
+    # Example: package_existence_control $PACKAGE_NAME
+    # PKG_OK variable will get return value from dpkg-query "install ok installed" if package from variable PACKAGE_NAME exists
+
+    PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $1 | grep "install ok installed")
+    if [ "" == "$PKG_OK" ]; then
+        echo false
+    else
+        echo true
+    fi
+}
+
+apt-install_wrapper() {
+
+    # use this function to install packages from repository
+    # this function is also responsible for messages and logs
+    # pass $PACKAGE NAME as $1 argument 
+    # example: package_installation $PACKAGE_NAME
+
+    # First check if package is realy missing:
+    # package_existence_control will give you value true or false weather package is installed or not
+
+    for arg in "$@"; do
+        PACKAGE_EXISTENCE=$(package_existence_control $arg)
+        if [ $PACKAGE_EXISTENCE == false ]; then
+            # MESSAGE="Package $arg does not exist, performing installation..."
+            sudo apt install -y $arg
+            PACKAGE_EXISTENCE=$(package_existence_control $arg)
+            if [ $PACKAGE_EXISTENCE  == true ]; then
+                MESSAGE="Package $arg installed successfully!"
+                log_entry $MESSAGE
+            else
+                MESSAGE_ERROR="$arg not installed!"
+                log_entry_error $MESSAGE_ERROR
+            fi
+        else
+            log_entry_warning "Package $arg already installed!"
+        fi
+    done
+}

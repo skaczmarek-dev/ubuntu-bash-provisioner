@@ -1,0 +1,105 @@
+
+vglv_counter_service() {
+
+    if [ ! -f $LOG_FOLDER/vglv.counter  ]; then
+
+        touch $LOG_FOLDER/vglv.counter
+        echo "0" | tee $LOG_FOLDER/vglv.counter
+    else
+
+        local counter=$(cat $LOG_FOLDER/vglv.counter)
+        local counter=$((counter+1))
+        echo $counter | tee $LOG_FOLDER/vglv.counter 
+    fi
+}
+
+raid1_add_volume_to_startup_script() {
+
+    local vglv_count=$1
+
+    if [ ! -f "/home/$ADMIN_USER/startup.sh" ]; then
+
+        touch /home/$ADMIN_USER/startup.sh
+        echo "#!/bin/bash" >> /home/$ADMIN_USER/startup.sh
+        sudo chmod +x /home/$ADMIN_USER/startup.sh
+    fi
+
+    mkdir /mnt/raid1_${vglv_count}
+    echo "sleep 3" >> /home/$ADMIN_USER/startup.sh
+    echo "sudo mount /dev/mapper/raid1_vg${vglv_count}-raid1_lv${vglv_count} /mnt/raid1_${vglv_count}" >> /home/$ADMIN_USER/startup.sh
+
+    sudo mount /dev/mapper/raid1_vg${vglv_count}-raid1_lv${vglv_count} /mnt/raid1_${vglv_count}
+}
+
+raid1_create() {
+
+    local drive1=$1
+    local drive2=$2
+    local vglv_count=$(vglv_counter_service)
+
+    if [ ! -f $LOG_FOLDER/raid1_lv${vglv_count}.lock ]; then
+
+        if [ "/dev/mapper/luks_${drive}" ]; then
+
+            pvcreate /dev/mapper/luks_${drive1}
+            pvcreate /dev/mapper/luks_${drive2}
+            vgcreate raid1_vg${vglv_count} /dev/mapper/luks_${drive1} /dev/mapper/luks_${drive2}
+            lvcreate --mirrors 1 --type raid1 -l 100%FREE --nosync -n raid1_lv${vglv_count} raid1_vg${vglv_count}
+            mkfs.ext4 /dev/raid1_vg${vglv_count}/raid1_lv${vglv_count}
+
+            raid1_add_volume_to_startup_script $vglv_count
+
+            touch $LOG_FOLDER/raid1_lv${vglv_count}.lock
+
+            # visual confirmation below
+            echo ""
+            lsblk
+        else
+            
+            echo "you provided wrong drive name!"
+        fi
+    else
+        # visual confirmation below
+        echo ""
+        lsblk
+        echo_message_error "looks like you already created raid1 with drives $drive1 and $drive2 - locked by $LOG_FOLDER/raid1_lv${vglv_count}.lock"
+    fi
+}
+
+raid1_wrapper() {
+
+    # TODO - zapytaj, czy dodać dysk do crypttab
+   
+    echo ""
+    echo "######## RAID1 SETUP ########"
+    echo ""
+
+    local first_raid1_indicator=false
+
+    while true; do
+
+        if [ "$first_raid1_indicator" = false ]; then
+
+            read -p 'Would you like to bind luks drives in RAID1? [y/n]' yesno_raid1_loop
+        else
+            read -p 'Would you like to bind another luks drives in RAID1? [y/n]' yesno_raid1_loop
+        fi
+
+        case $yesno_raid1_loop in
+            [Yy]* )
+                echo ""
+                lsblk
+                read -p "Please provide first luks drive name in format - sdx:" drive1_name
+                read -p "Please provide second luks drive name in format - sdx:" drive2_name
+                raid1_create $drive1_name $drive2_name
+                first_raid1_indicator=true
+            ;;
+            [Nn]* ) 
+                echo "Skipping LUKS encryption"
+                break
+            ;;
+                * ) echo "Answer either yes or no to skipp!"
+            ;;
+        esac
+    done
+}

@@ -1,0 +1,72 @@
+
+install_docker_server() {
+
+    apt-install_wrapper docker.io
+    sudo systemctl start docker
+    sudo systemctl enable docker
+    sudo gpasswd -a $ADMIN_USER docker
+
+    if [[ "$(docker -v)" != *"not found"* ]]; then
+
+        log_entry "docker was installed successfully"
+
+        if [[ "$(systemctl status docker)" == *"active"* ]]; then
+
+            log_entry "docker daemon was enabled successfully"
+        else
+
+            log_entry_error "docker daemon was not enabled successfully!!!"
+        fi
+    else
+
+        log_entry_error "docker was not installed!!!"
+    fi
+
+    sudo curl -L "https://github.com/docker/compose/releases/download/1.29.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo chmod +x /usr/local/bin/docker-compose
+
+    if [[ "$(docker-compose -version)" != *"not found"* ]]; then
+
+        log_entry "docker-compose was installed successfully"
+    else
+
+        log_entry_error "docker-compose was not installed!!!"
+    fi
+}
+
+docker-server_question-loop() {
+
+    while true; do
+
+        read -p 'Would you like to install docker server?[y/n]?' yesno_docker_server_loop
+        case $yesno_docker_server_loop in
+            [Yy]* )
+                log_entry "INSTALLING DOCKER SERVER..."
+                install_docker_server
+                touch ${LOG_FOLDER}/docker-server_install.lock
+                break
+            ;;
+            [Nn]* ) 
+                echo "Skipping docker server installation"
+                touch ${log_folder}/docker-server_install.lock
+                break
+            ;;
+                * ) echo "Answer either yes or no to skipp!";;
+        esac
+    done
+}
+
+docker_server_wrapper() {
+
+    echo ""
+    echo "######## DOCKER SERVER SETUP ########"
+    echo ""
+
+    if [ -f "${log_folder}/docker-server_install.lock" ]; then
+
+        log_entry_warning "Looks like docker server had been already installed!!!"
+    else
+
+        docker-server_question-loop
+    fi
+}

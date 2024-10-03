@@ -1,0 +1,124 @@
+
+# generator hasła będzie prawdopodobnie neipotrzebny, ponierważ generujemy pliki-klucze
+luks_generate_password() {
+
+    chars=abcdefghijklmnopqrstuvwyzx1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ
+    for i in {1..46} ; do
+        echo -n "${chars:RANDOM%${#chars}:1}"
+    done
+}
+
+luks_add_volume_to_startup_script() {
+
+    local drive=$1 
+
+    if [ ! -f "/home/$ADMIN_USER/startup.sh" ]; then
+
+        touch /home/$ADMIN_USER/startup.sh
+        echo "#!/bin/bash" >> /home/$ADMIN_USER/startup.sh
+        sudo chmod +x /home/$ADMIN_USER/startup.sh
+    fi
+
+    echo "sudo cryptsetup luksOpen /dev/${drive}1 luks_${drive} --key-file=/home/${ADMIN_USER}/luks/${drive}.key" >> /home/$ADMIN_USER/startup.sh
+}
+
+
+luks_format_drive() {
+
+    # TODO - refactor this function, so it will encrypt existing partition (without destroying it, situation, where computer 
+    # has only one drive and it was divided between system partition and data parrtition), if such was provided in the argument. 
+
+    local drive=$1
+
+    # remove previously existing partitions - todo perform as smart loop
+
+    (echo d; echo w) | fdisk /dev/${drive} &>/dev/null
+    (echo d; echo w) | fdisk /dev/${drive} &>/dev/null
+    (echo d; echo w) | fdisk /dev/${drive} &>/dev/null
+    (echo d; echo w) | fdisk /dev/${drive} &>/dev/null
+
+    # create new partition on whole drive
+
+    (echo g; echo n; echo ""; echo ""; echo ""; echo "w") | fdisk /dev/${drive}
+}
+
+luks_encrypt_drive() {
+
+    local drive=$1
+
+    #TODO - http://localhost:8080/knowledge-tech#it0012
+
+    if [ "/dev/${drive}" ]; then
+
+        luks_format_drive $drive
+
+        if [ ! -d "/home/${ADMIN_USER}/luks" ]; then
+
+            mkdir /home/${ADMIN_USER}/luks
+        else
+
+            echo "folder /home/${ADMIN_USER}/luks already exists, skipping folder creation..."
+        fi
+
+        dd if=/dev/random bs=64 count=1 of=/home/${ADMIN_USER}/luks/${drive}.key
+        echo "YES" | sudo cryptsetup luksFormat /dev/${drive}1 /home/${ADMIN_USER}/luks/${drive}.key
+        
+        sudo cryptsetup luksOpen /dev/${drive}1 luks_${drive} --key-file=/home/${ADMIN_USER}/luks/${drive}.key
+
+    else
+        
+        echo "you provided wrong partition name!"
+    fi
+}
+
+# TODO - create function: add volume to automatic decrypt
+luks_crypttab_add() {
+
+    echo "TODO!!!"
+
+}
+
+luks_wrapper() {
+
+    # TODO - zapytaj, czy dodać dysk do crypttab
+   
+    echo ""
+    echo "######## LUKS SETUP ########"
+    echo ""
+
+    local first_drive_indicator=false
+
+    while true; do
+
+        if [ "$first_drive_indicator" = false ]; then
+
+            read -p 'Would you like to encrypt drive? [y/n]' yesno_luks_server_loop
+        else
+            read -p 'Would you like to encrypt another drive? [y/n]' yesno_luks_server_loop
+        fi
+
+        case $yesno_luks_server_loop in
+            [Yy]* )
+                # visual confirmation below
+                echo ""
+                lsblk
+                
+                read -p "Please provide drive name in format - sdx:" drive_name
+                luks_encrypt_drive $drive_name
+                
+                # visual confirmation below
+                echo ""
+                lsblk
+                
+                luks_add_volume_to_startup_script $drive_name
+                first_drive_indicator=true
+            ;;
+            [Nn]* ) 
+                echo "Skipping LUKS encryption"
+                break
+            ;;
+                * ) echo "Answer either yes or no to skipp!"
+            ;;
+        esac
+    done
+}
