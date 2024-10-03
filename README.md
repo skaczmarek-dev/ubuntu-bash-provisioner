@@ -9,6 +9,15 @@ This script is an interactive wizard, which prepares Ubuntu server for use.
 * download release from github
 * unpack and start script `./ubp`
 
+or 
+
+```
+# git clone https://github.com/skaczmarek-dev/ubuntu-bash-provisioner
+# cd ubuntu-bash-provisioner
+# ./build.sh
+# ./ubp
+```
+
 # Modules
 
 The script is divided into logical parts, each providing different functionality in the server setup
