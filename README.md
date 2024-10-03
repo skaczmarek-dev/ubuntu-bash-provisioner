@@ -11,17 +11,19 @@ This script is an interactive wizard, which prepares Ubuntu server for use.
 
 # Modules
 
+The script is divided into logical parts, each providing different functionality in the server setup
+
 ## Admin
 
-This module will create designated admin user, who will be the only user proviledget to access this server via ssh. If admin user already exists, because was created during the installation of the os, you still have to provide that username in order to allow that user to connect to the server via ssh in the next step.
+This module will create a designated user admin, who will be the only user authorized to access this server via ssh. If the admin user already exists because it was created during the installation of the operating system, you still need to provide this username to allow this user to connect to the server via ssh in the next step.
 
 ## Essentials
 
-Basic packages
+Basic packages installation from the default repository.
 
 ## Hardening
 
-This module is mandatory and will do few things:
+This module is mandatory and will do a few things:
 
 * disable ssh access for root
 * change default ssh port
